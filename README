@@ -1,0 +1,53 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1656
+
+(from the help of the plugin: :help quilt-intro ) :
+
+
+Quilt is a project initiated by Andrew Morton to work with patches sent on the
+LKML. It is quite stable now, and really usefull to deal with stacked patches.
+
+First of all, before using this plugin, you must install quilt on your
+station, for, under debian distribution, type in a command shell:
+
+	aptitude install quilt
+
+Now that you have your station setuped, let's speak a little about Quilt
+itself, more information can be found in man quilt shell command.
+
+The idea behind quilt is that you work on patches, not on sources directly, so
+all your productions are patches. You create a patch to track your
+modifications and send this patch to a work group so they can valiadate/accept
+or integrate your modifications.
+
+Now you need a tool to help you maintain your patches, and that's exacltly
+what quilt does. Quilt let you apply a patch, modify your files (and thus the
+patch), unapply the patch. But it also allows you to do that on several
+patches at a time (one patch applied after the other ...) that's what we call
+the stacked patches. (or the patch stack). 
+
+You can go to a level on the patch stack, modify the patch, and come back to
+another patch stack level.
+
+This plugin helps you handle all those boring operations with simple vim
+commands ;)
+
+To sum up the workflow :
+
+|:QuiltSetup| <patchdir>
+
+ then:
+
+|:QuiltNew|   <patchname>
+
+ ... open a file ...
+
+|:QuiltAdd|
+
+ ... work on the file ...
+ ... save your modifiations ...
+
+ |:QuiltRefresh|
+
+ and so on ... 
+
+:help quilt-usage
