@@ -27,6 +27,9 @@
 "  QuiltNew[!] <patch>           : Creates a new patch on the top of the stack 
 "  QuiltDelete[!] [patch]     : Delete the patch, default is current           
 "                                                                              
+"  QuiltFiles [patch]         : Create a file list (in a quickfix) for the     
+"                               given patch (default current)                  
+"                                                                              
 "------------------------------------------------------------------------------
 " ChangeLog:                                                                   
 "                                                                              
@@ -54,6 +57,16 @@
 "       * Added QuiltDelete[!]                                                 
 "       * Fixed a whole bunch of bugs ... (thanks to #vim IRC channel )        
 "                                                                              
+" 0.4 : [2006/09/18]                                                           
+"       * Changed :exe into system() with return value check                   
+"       * Added QuiltStatus as an autocommand for file reading                 
+"       * Added QuiltRefresh warning parsing, create a quickfix using cexpr    
+"       * Added QuiltFiles command                                             
+"       * Fixed some bugs                                                      
+"       * Suppressed verbose output for QuiltAdd                               
+"       * Suppressed verbose output for QuiltRefresh                           
+"       * Suppressed verbose output for QuiltRemove                            
+"                                                                              
 "------------------------------------------------------------------------------
 "                                                                              
 " TODO:                                                                        
@@ -62,15 +75,13 @@
 " * a merge interface                                                          
 " * an interface showing the current patch on the bottom                       
 " * allow fold/unfold to see what files are included                           
-" * handle quilt error/warnings using quickfix ...                             
+" * handle quilt error using quickfix ...                                      
 " * auto add the currently modified file                                       
 " * auto refresh on change                                                     
 " * add an indication to know if the patch needs refresh or not                
-" * add an indication to know if the current file is in the current patch      
-" * add a command to move a line from a patch to another                       
 " * add a Quilt command that takes the cmd as a parameter                      
 " * prevent the writing if the file is in no patch (without the ! option)      
-" * with the DirDiff intefface, add a background color to highlight what       
+" * with the DirDiff inteface, add a background color to highlight what        
 "   belong to what patch (might be possible for only one patch ?               
 " * add an info to show to which patch belong a chunk                          
 " * add Mail command                                                           
@@ -110,8 +121,40 @@ command! -nargs=+ -bang QuiltNew call <SID>QuiltNew( "<bang>", <f-args> )
 command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch
        \ QuiltDelete call <SID>QuiltDelete( "<bang>", <f-args> )
 
+
+command! -nargs=? -complete=custom,QuiltCompleteInPatch
+       \ QuiltFiles call <SID>QuiltFiles( <f-args> )
+
 " TODO
 " command! QuiltInterface call <SID>QuiltInterface()
+
+function! <SID>QuiltFiles( ... )
+    if <SID>IsQuiltDirectory() == 0 
+        return 0
+    endif
+
+    let cmd= "quilt files "
+
+    if a:0 == 1
+
+        let cmd = cmd . a:1
+
+    endif
+
+    let fileList = split( system( cmd . " 2>&1" ), '\n' )
+    let cexprList = []
+    let i = 0
+    while i < len( fileList )
+
+        call add( cexprList, fileList[i] . ':0: is included in the patch ' )
+
+        let i = i + 1
+    endwhile
+
+    cexpr cexprList
+ 
+endfunction
+
 
 "                                                                              
 " Create a new patch on the top of the patch stack                             
@@ -198,7 +241,15 @@ function! <SID>QuiltDelete( bang, ... )
     endif
 
  
-    call system( cmd )
+
+    let ret = system( cmd . " 2>&1" )
+    if v:shell_error != 0
+        echohl ErrorMsg
+    else
+        echohl MoreMsg
+    endif
+    echo ret
+    echohl none
 
     call <SID>QuiltStatus()
 
@@ -347,15 +398,23 @@ function! <SID>QuiltAdd( ... )
         return 0
     endif
 
-    let cmd= "!quilt add "
+    let cmd= "quilt add "
 
     if a:0 >= 1
         let cmd = cmd . a:1
     else 
-        let cmd = cmd . "%"
+        let cmd = cmd . expand( "%" )
     endif
 
-    exec cmd
+    let ret = system( cmd . " 2>&1" )
+    if v:shell_error != 0
+        echohl ErrorMsg
+    else
+        echohl MoreMsg
+    endif
+
+    echo substitute( ret, "\n$", "", "" )
+    echohl none
 
     call <SID>QuiltStatus()
 
@@ -373,15 +432,22 @@ function! <SID>QuiltRemove( ... )
         return 0
     endif
 
-    let cmd= "!quilt remove "
+    let cmd= "quilt remove "
 
     if a:0 >= 1
         let cmd = cmd . a:1
     else 
-        let cmd = cmd . "%"
+        let cmd = cmd . expand( "%" )
     endif
 
-    exec cmd
+    let ret = system( cmd . " 2>&1" )
+    if v:shell_error != 0
+        echohl ErrorMsg
+    else
+        echohl MoreMsg
+    endif
+    echo substitute( ret, "\n$", "", "" )
+    echohl none
 
     call <SID>QuiltStatus()
 endfunction
@@ -397,7 +463,7 @@ function! <SID>QuiltRefresh( bang, ... )
         return 0
     endif
 
-    let cmd= "!quilt refresh "
+    let cmd= "quilt refresh "
 
     if a:0 == 1
         let cmd = cmd . a:1
@@ -407,9 +473,59 @@ function! <SID>QuiltRefresh( bang, ... )
         let cmd = cmd . " -f "
     endif
 
-    exec cmd
+    let ret = system( cmd )
+
+    if v:shell_error == 0
+        if ret =~ 'Warning:'
+
+        call <SID>CreateRefreshWarningList( ret )
+
+        endif
+
+        echohl MoreMsg
+    else
+        echohl ErrorMsg
+    endif
+    
+    let lines =  split( ret, '\n' )
+    echo lines[ len(lines) - 1 ]
+    echohl none
 
     call <SID>QuiltStatus()
+
+endfunction
+
+" Builds the cclist (warning list)
+
+function! <SID>CreateRefreshWarningList( output )
+    
+    let warnings = split( a:output, "\n" )
+    let i = 0
+
+    call filter( warnings, 'v:val =~ "Warning:"' )
+
+    let msgs  = []
+
+    while i < len( warnings )
+
+
+        let file = substitute( warnings[ i ], '.*of \(.*\)$', '\1', '' )
+        let message = substitute( warnings[ i ], 'Warning: \(.*\) in line.*', '\1', '' )
+        
+        while warnings[ i ] =~ 'in line.*[[:digit:]]\+'
+            
+            let line = substitute( matchstr( warnings[ i ], 'in line[^[:digit:]]*[[:digit:]]\+' ), '[^[:digit:]]', '', 'g' )
+            let warnings[i] = substitute( warnings[ i ], 'in line[^[:digit:]]*[[:digit:]]\+', 'in line ', '')
+    
+            call add( msgs, file . ':' . line . ': Quilt Warning: ' . message )
+
+        endwhile
+
+        let i = i + 1
+
+    endwhile
+
+    cexpr msgs
 
 endfunction
 
@@ -422,7 +538,8 @@ function! <SID>QuiltCurrent()
 
     let g:QuiltCurrentPatch = system ("quilt applied | tail -n 1")
     let g:QuiltCurrentPatch = substitute( g:QuiltCurrentPatch, '\n', '', '' )
-    echo "The last patch is " . g:QuiltCurrentPatch
+    
+"    echo "The last patch is " . g:QuiltCurrentPatch
 
 endfunction
 
@@ -440,10 +557,18 @@ function! <SID>QuiltStatus()
 
     " Set the status line :
 
-    setlocal statusline=%0.28(%f\ %m%h%r%)\ [%{g:QuiltCurrentPatch}]\ %=%0.10(%l,%c\ %P%)
+    if <SID>ListAllFiles() =~ expand( "%" )
+        setlocal statusline=%0.28(%f\ %m%h%r%)\ [%{g:QuiltCurrentPatch}][+in]\ %=%0.10(%l,%c\ %P%)
+    else
+        setlocal statusline=%0.28(%f\ %m%h%r%)\ [%{g:QuiltCurrentPatch}][!in]\ %=%0.10(%l,%c\ %P%)
+    endif
     setlocal laststatus=2
 
+    checktime
+
 endfunction
+
+autocmd BufNewFile,BufReadPost,FileReadPost * QuiltStatus
 
 
 "
