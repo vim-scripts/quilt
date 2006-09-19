@@ -3,69 +3,13 @@
 "                                                                              
 " Author:     Florian Delizy <florian.delizy@unfreeze.net>                     
 " Maintainer: Florian Delizy <florian.delizy@unfreeze.net>                     
-" ChangeLog:                                                                   
 "                                                                              
-" usage :                                                                      
-"                                                                              
-" :QuiltStatus                : show/refresh the current patch name in the     
-"                               status bar                                     
-"                                                                              
-" :QuiltPush[!]    [patch/n]  : push to the patch (default is 1)               
-" :QuiltPop[!]     [patch/n]  : pop the current patch                          
-"  QuiltGoTo[!]    [patch/n]  : push or pop to the specified patch             
-"                                                                              
-" :QuiltAdd        [file]     : add the current file to the patch              
-" :QuiltRemove     [file]     : remove the file from the patch (default=%)     
-"                                                                              
-" :QuiltRefresh    [patch]    : refresh the patch (default=%)                  
-"                                                                              
-" :[range]QuiltMoveTo[!] [patch]: move the text range from the current patch to
-"                               the dest patch                                 
-"  QuiltFinishMove[!]         : finishes a move initiated with QuiltMoveTo     
-"                                                                              
-"  QuiltSetup <patch_dir>     : Setup the working directory with needed links  
-"  QuiltNew[!] <patch>           : Creates a new patch on the top of the stack 
-"  QuiltDelete[!] [patch]     : Delete the patch, default is current           
-"                                                                              
-"  QuiltFiles [patch]         : Create a file list (in a quickfix) for the     
-"                               given patch (default current)                  
+" Usage:                                                                       
+" :help quilt-usage                                                            
 "                                                                              
 "------------------------------------------------------------------------------
 " ChangeLog:                                                                   
-"                                                                              
-" 0.1a : (2006/09/13)                                                          
-"       * Initial plugin creation                                              
-"                                                                              
-" 0.2b : (2006/09/15)                                                          
-"       * Added QuiltRefresh, QuiltPush, QuiltPop commands                     
-"       * Added QuiltAdd, QuiltRemove                                          
-"       * Check if the current directory is a quilt directory                  
-"       * Added parameters for Refresh, Add, Pop, Add ...                      
-"       * Added patch completion                                               
-"       * Added in patch files completion                                      
-"                                                                              
-" 0.3  : [2006/09/17]                                                          
-"       * Added the ! argument for Pop,Push,Refresh                            
-"       * Added the QuiltMoveTo/QuiltFinishMove command                        
-"       * Spellchecked the Changelog ;)                                        
-"       * Fixed the QuiltRefresh bug                                           
-"       * Fixed QuiltAdd definition bug                                        
-"       * Added QuiltGoTo[!] (Push/Pop)                                        
-"       * Added QuiltSetup[!]                                                  
-"       * Make this file 80 characters terminal friendly                       
-"       * Added QuiltNew command                                               
-"       * Added QuiltDelete[!]                                                 
-"       * Fixed a whole bunch of bugs ... (thanks to #vim IRC channel )        
-"                                                                              
-" 0.4 : [2006/09/18]                                                           
-"       * Changed :exe into system() with return value check                   
-"       * Added QuiltStatus as an autocommand for file reading                 
-"       * Added QuiltRefresh warning parsing, create a quickfix using cexpr    
-"       * Added QuiltFiles command                                             
-"       * Fixed some bugs                                                      
-"       * Suppressed verbose output for QuiltAdd                               
-"       * Suppressed verbose output for QuiltRefresh                           
-"       * Suppressed verbose output for QuiltRemove                            
+" :help quilt-changelog                                                        
 "                                                                              
 "------------------------------------------------------------------------------
 "                                                                              
@@ -85,7 +29,6 @@
 "   belong to what patch (might be possible for only one patch ?               
 " * add an info to show to which patch belong a chunk                          
 " * add Mail command                                                           
-" * add a help file for commands                                               
 
 
 "------------------------------------------------------------------------------
@@ -208,10 +151,10 @@ function! <SID>QuiltNew( bang,  patch )
 
 endfunction
 
-"                                                                              
-" Create a new patch on the top of the patch stack                             
-" ! : remove the file on the patch directory as well (-r)                      
-"                                                                              
+"                                                                               
+" Create a new patch on the top of the patch stack                              
+" ! : remove the file on the patch directory as well (-r)                       
+"                                                                               
 
 function! <SID>QuiltDelete( bang, ... )
 
@@ -361,9 +304,9 @@ function! <SID>QuiltPop( bang, ... )
 
 endfunction
 
-"
-" Push to the next patch 
-" TODO: Handle the .rej in a separate buffer ... (and add it into a quickfix)
+"                                                                              
+" Push to the next patch                                                       
+" TODO: Handle the .rej in a separate buffer ... (and add it into a quickfix)  
 
 function! <SID>QuiltPush( bang, ... )
 
@@ -387,11 +330,11 @@ function! <SID>QuiltPush( bang, ... )
 
 endfunction
 
-"
-" Add the file to the current Quilt patch
-" 
-" TODO: Handle the -P patch command arg
-"
+"                                                                              
+" Add the file to the current Quilt patch                                      
+"                                                                              
+" TODO: Handle the -P patch command arg                                        
+"                                                                              
 function! <SID>QuiltAdd( ... )
 
     if <SID>IsQuiltDirectory() == 0 
@@ -420,11 +363,11 @@ function! <SID>QuiltAdd( ... )
 
 endfunction
 
-"
-" Remove the file from the current patch 
-"
-" TODO: Handle the -P patch command arg
-"
+"                                                                              
+" Remove the file from the current patch                                       
+"                                                                              
+" TODO: Handle the -P patch command arg                                        
+"                                                                              
 
 function! <SID>QuiltRemove( ... )
 
@@ -455,8 +398,8 @@ endfunction
 " refresh the current patch
 function! <SID>QuiltRefresh( bang, ... )
 
-" TODO: handle warning and errors, handle refresh a specific patch
-" using cexpr caddexpr cgetexpr and errorformat as well
+" TODO: handle warning and errors, handle refresh a specific patch             
+" using cexpr caddexpr cgetexpr and errorformat as well                        
 "
 "
     if <SID>IsQuiltDirectory() == 0 
@@ -495,7 +438,7 @@ function! <SID>QuiltRefresh( bang, ... )
 
 endfunction
 
-" Builds the cclist (warning list)
+" Builds the cclist (warning list)                                             
 
 function! <SID>CreateRefreshWarningList( output )
     
@@ -530,8 +473,7 @@ function! <SID>CreateRefreshWarningList( output )
 endfunction
 
 "
-" Print the current patch level and set the global variable for the statusline
-" use
+" Print the current patch level and set the global variable for the statusline 
 " 
 function! <SID>QuiltCurrent()
 
@@ -549,7 +491,7 @@ endfunction
 
 function! <SID>QuiltStatus()
 
-    if <SID>IsQuiltDirectory() == 0 
+    if <SID>IsQuiltOK() == 0 
         return 0
     endif
 

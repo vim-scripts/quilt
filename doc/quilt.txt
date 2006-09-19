@@ -1,0 +1,311 @@
+*quilt.txt*	For Vim version 7.0  Last change: 2006 Sept 19
+
+		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
+
+This file extensively describes the quilt plugin usage (version 0.5)
+
+Using quilt						*quilt-usage*
+
+1.  Quilt Introduction					|quilt-intro|
+2.  Setting up the working directoyr			|:QuiltSetup|
+3.  Creating a new patch				|:QuiltNew|
+4.  Adding a file to a patch				|:QuiltAdd|
+5.  Refreshing a patch					|:QuiltRefresh|
+6.  Deleting a patch					|:QuiltDelete|
+7.  Removing a file from a patch			|:QuiltRemove|
+8.  Working with the Patch Stack			|quilt-patch-stack|
+9.  Moving a modification from a patch to another	|quilt-move|
+10. More about :Quilt* commands				|quilt-advanced|
+A.  Find more about the plugin				|quilt-about|
+B. Changelog						|quilt-changelog|
+
+===============================================================================
+1. Quilt Introduction					*quilt-intro*
+
+Quilt is a project initiated by Andrew Morton to work with patches sent on the
+LKML. It is quite stable now, and really usefull to deal with stacked patches.
+
+First of all, before using this plugin, you must install quilt on your
+station, for, under debian distribution, type in a command shell:
+
+	aptitude install quilt
+
+Now that you have your station setuped, let's speak a little about Quilt
+itself, more information can be found in man quilt shell command.
+
+The idea behind quilt is that you work on patches, not on sources directly, so
+all your productions are patches. You create a patch to track your
+modifications and send this patch to a work group so they can valiadate/accept
+or integrate your modifications.
+
+Now you need a tool to help you maintain your patches, and that's exacltly
+what quilt does. Quilt let you apply a patch, modify your files (and thus the
+patch), unapply the patch. But it also allows you to do that on several
+patches at a time (one patch applied after the other ...) that's what we call
+the stacked patches. (or the patch stack). 
+
+You can go to a level on the patch stack, modify the patch, and come back to
+another patch stack level.
+
+This plugin helps you handle all those boring operations with simple vim
+commands ;)
+
+To sum up the workflow :
+
+|:QuiltSetup| <patchdir>
+
+ then:
+
+|:QuiltNew|   <patchname>
+
+ ... open a file ...
+
+|:QuiltAdd|
+
+ ... work on the file ...
+ ... save your modifiations ...
+
+ |:QuiltRefresh|
+
+ and so on ... 
+
+
+===============================================================================
+2. Setting up the working directory			*:QuiltSetup*
+
+quilt needs to store its patches in a 'patches' directory. Moreover, quilt
+stores the order in which all patches must be applied/unapplied in a files
+called 'series'. (which can be located in the current directory, in the
+'patches' directory, or in the '.pc' special directory).
+
+|:QuiltSetup[!]| <patchdir>
+
+Automatically creates all necessary links to make quilt work fine:
+
+	* First, it checks if <patchdir> already exists and fail if not
+	  to create the directory <patchdir>, :QuiltSetup! <patchdir>
+
+	* Create a soft link to <patchdir> called 'patches' in the current
+	  directory. (This only works under linux for now ...)
+
+	* Attempt to find the 'series' file, and if not found, creates an
+	  empty 'series' file, in the 'patches' directory
+
+Here you go!
+
+<patchdir> is automatically completed, use [tab] to navigate in existing
+directories. 
+
+===============================================================================
+3. Creating a new patch					*:QuiltNew*
+
+|:QuiltNew[!]| <patch>           
+
+Creates a new patch on the top of the patch stack and apply it. Patches can be 
+organized in directories. All patches are stored in the 'patches' directory
+(or one of its sub-directory). 
+
+To create a patch 'mypatch' in a directory 'mydir' use the command :
+
+ :QuiltNew mydir/mypatch
+
+if 'mydir' does not exist, QuitlNew will fail. Use '!' to create the directory
+if this directory does not exist.
+
+:QuiltNew fail in case the patch already exists.
+
+===============================================================================
+4. Adding a file to a patch				*:QuiltAdd*
+
+|:QuiltAdd| [file]     
+
+Adds [file] to the current patch. If [file] is not specified, the current file
+is added to the patch. The file must be added before any modification. Only
+modifications done after |:QuiltAdd|will be added to the patch on
+|:QuiltRefresh:|
+
+ [file] is autocompleted, use [tab] to naviguate through existing files
+
+===============================================================================
+5. Refreshing a patch					*:QuiltRefresh*
+
+|:QuiltRefresh| [patch]
+
+Refreshes the patch [patch]. If [patch] is not specified, the current patch is
+refreshed. 
+
+|:QuiltRefresh| opens a quickfix containing all quilt warnings
+(currently only tested with 'trailing whitespace' warnings ... )
+
+ [patch] is autocompleted, use [tab] to naviguate through existing patches
+
+===============================================================================
+6. Deleting a patch					*:QuiltDelete*
+
+|QuiltDelete[!]| [patch]     
+
+Deletes the patch, default is delete the current patch. if '!' is used, the
+patch file is also deleted.
+
+ [patch] is autocompleted, use [tab] to naviguate through existing patches
+
+===============================================================================
+7. Removing a file from a patch				*:QuiltRemove*
+
+|:QuiltRemove|     [file]     
+
+Removes the file from the current patch. If [file] is not specified, removes
+the current file from the patch.
+
+ [file] is autocompleted, use [tab] to naviguate through files present in the
+ current patch.
+
+===============================================================================
+8. Working with the Patch Stack				*quilt-patch-stack*
+
+One on the most interesting features of quilt is its ability to apply/unapply
+a set of patch. Patches are applied one after the other, like a stack (the
+most recent applied patch is said to be on the top of the stack).
+
+This plugin allow you to push/pop or directly go to a patch:
+
+
+							*:QuiltPush*
+|:QuiltPush[!]| [patch]
+|:QuiltPush[!]| [number]
+
+Pushes patch until [patch] is applied (or [number] of patches are applied). If
+none of [patch] nor [number] is supplied, only push one patch (the next patch).
+
+If the patch fail to apply, use '!' to force it, then refresh the patch using
+the quilt cmd output.
+
+ [patch] is autocompleted, use [tab] to naviguate through unapplied patches
+
+
+							*:QuiltPop*
+|:QuiltPop[!]| [patch]
+|:QuiltPop[!]| [number]
+
+Pops patch until [patch] is unapplied (or [number] of patches are unapplied). 
+If none of [patch] nor [number] is supplied, only pop one patch off the stack.
+(the current patch)
+
+If the patch fail to unapply, use '!' to force it. It's usually a better idea to 
+refresh (|:QuiltRefresh| a patch failing to unapply before trying again).
+
+ [patch] is autocompleted, use [tab] to naviguate through applied patches
+
+
+							*:QuiltGoTo*
+|:QuiltGoTo[!]|[patch]  
+
+Push or pop to the specified patch (depending if the patch is applied or not)
+
+ [patch] is autocompleted, use [tab] to naviguate through existing patches
+
+===============================================================================
+9. Moving a modification from a patch to another	*quilt-move*
+
+***Warning This feature is not stable in the 0.5 version. Use it with care.***
+
+							*:QuiltMoveTo*
+|:[range]QuiltMoveTo[!]| <patch>
+
+Moves the text range from the current to <patch>. This command first creates a
+patch to apply the modifications, deletes the range from the file, write it,
+refresh the current patch, go to <patch>, and use the command |:diffpatch| to
+add the range again. 
+
+Once you've reviewed the modification (in the %-new split), stay in this
+buffer and use |:QuiltFinishMove| to finish the operation.
+
+If '!' is supplied, directly call |:QuiltFinishMove|
+
+ [patch] is autocompleted, use [tab] to naviguate through existing patches
+
+							*:QuiltFinishMove*
+|:QuiltFinishMove[!]
+
+Finishes a move initiated with |:QuiltMoveTo| This command must be issued on
+the %-new buffer to work, or strange results may occur.
+
+===============================================================================
+10. More about :Quilt* commands				*quilt-advanced*
+
+							*:QuiltStatus*
+
+|:QuiltStatus|
+
+Shows/refresh the current patch name in the status bar, and add a flag
+indicating if the current file is included ([+in]) in the current patch, or
+not ([!in])
+
+
+							*:QuiltFiles*
+|:QuiltFiles| [patch] 
+
+Create a file list (in a quickfix) for the given patch (default current), 
+allowing to quickly review all files contained in a patch.
+
+ [patch] is autocompleted, use [tab] to naviguate through existing patches
+
+===============================================================================
+A. Find more about the plugin				*quilt-about*
+
+This plugin had been written by Florian Delizy <florian.delizy@unfreeze.net>,
+please report any bug, suggestion to this address, mentionning [VimQuilt] in
+the subject line. (I correct any bug sent to me, but I never correct bugs I am
+not aware about ;) )
+
+If you need a feature, please tell me (or add it to this script, and sent your
+patch back to me, I'll include it in the main distribution.
+
+The latest version of this script can always be found on www.vim.org :
+http://www.vim.org/scripts/script.php?script_id=1656
+
+Quilt is a GPL project, which can be found on savannah.nognu.org : 
+http://savannah.nongnu.org/projects/quilt
+
+This plugin had been tested with quilt 0.45 (debian)
+
+===============================================================================
+B. Changelog						*quilt-changelog*
+
+0.1a : (2006/09/13)                                                          
+	* Initial plugin creation                                              
+                                                                             
+0.2b : (2006/09/15)                                                          
+	* Added QuiltRefresh, QuiltPush, QuiltPop commands                     
+	* Added QuiltAdd, QuiltRemove                                          
+	* Check if the current directory is a quilt directory                  
+	* Added parameters for Refresh, Add, Pop, Add ...                      
+	* Added patch completion                                               
+	* Added in patch files completion                                      
+                                                                             
+0.3  : [2006/09/17]                                                          
+	* Added the ! argument for Pop,Push,Refresh                            
+	* Added the QuiltMoveTo/QuiltFinishMove command                        
+	* Spellchecked the Changelog ;)                                        
+	* Fixed the QuiltRefresh bug                                           
+	* Fixed QuiltAdd definition bug                                        
+	* Added QuiltGoTo[!] (Push/Pop)                                        
+	* Added QuiltSetup[!]                                                  
+	* Make this file 80 characters terminal friendly                       
+	* Added QuiltNew command                                               
+	* Added QuiltDelete[!]                                                 
+	* Fixed a whole bunch of bugs ... (thanks to #vim IRC channel )        
+                                                                             
+0.4 : [2006/09/18]                                                           
+	* Changed :exe into system() with return value check                   
+	* Added QuiltStatus as an autocommand for file reading                 
+	* Added QuiltRefresh warning parsing, create a quickfix using cexpr    
+	* Added QuiltFiles command                                             
+	* Fixed some bugs                                                      
+	* Suppressed verbose output for QuiltAdd                               
+	* Suppressed verbose output for QuiltRefresh                           
+	* Suppressed verbose output for QuiltRemove                            
+                                                                             
+0.5 : [2006/09/19]                                                                     
+	* Added quilt.txt into the package, (help file)                        
+	* Fixed a QuiltStatus bug issuing an error at vim startup
