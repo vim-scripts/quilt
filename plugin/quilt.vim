@@ -28,7 +28,6 @@
 " * with the DirDiff inteface, add a background color to highlight what        
 "   belong to what patch (might be possible for only one patch ?               
 " * add an info to show to which patch belong a chunk                          
-" * add Mail command                                                           
 
 
 "------------------------------------------------------------------------------
@@ -67,9 +66,174 @@ command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch
 
 command! -nargs=? -complete=custom,QuiltCompleteInPatch
        \ QuiltFiles call <SID>QuiltFiles( <f-args> )
+command! -nargs=? -complete=file QuiltPatches call <SID>QuiltPatches(<f-args>)
+
+command! -nargs=+ -complete=custom,QuiltCompleteInPatch
+       \ QuiltMail call <SID>QuiltMail( <f-args> )
+
+let g:QuiltSubject = '[patch @num@/@total@] @name@'
+let g:QuiltMailSleep = 1
 
 " TODO
 " command! QuiltInterface call <SID>QuiltInterface()
+
+
+
+" Prepare a mail with the given patches
+
+function! <SID>QuiltMail( dest, ... )
+
+    if a:dest !~ '@'
+	echohl ErrorMsg
+	echo 'First argument must be an email address'
+	echohl none
+	return 0
+    endif
+
+    let allpatches = split( <SID>ListAllPatches(), '\n' )
+
+    " filter patches
+
+    if a:0 > 0
+        
+        " if only one argument, send only one patch ... 
+        if a:0 == 1
+
+            let i = index( allpatches, a:1 )
+
+            if -1 == i
+                echohl ErrorMsg
+                echo "Can't find " . a:1 . " in the patch list"
+                echohl none
+                return 0
+            endif
+            
+            let firstPatch = i
+            let lastPatch = i
+
+        else
+        " else send a range of patches
+            
+            " find the first patch
+            let firstPatch =  index( allpatches, a:1 )
+
+            if -1 == firstPatch
+                echohl ErrorMsg
+                echo "Can't find " . a:1 . " in the patch list"
+                echohl none
+                return 0
+            endif
+
+            " get the last patch
+
+            let lastPatch =  index( allpatches, a:2 )
+
+            if -1 == lastPatch
+                echohl ErrorMsg
+                echo "Can't find " . a:2 . " in the patch list"
+                echohl none
+                return 0
+            endif
+
+            " check the range
+            
+            if firstPatch > lastPatch
+                echohl WarningMsg
+                echo a:1 . " is applied after " . a:2 . " => reverting order"
+                echohl none
+
+                let tmp = lastPatch
+                let firstPatch = lastPatch
+                let lastPatch = tmp
+            endif
+
+        endif
+
+    else
+        " No argument, send them all
+        
+        let firstPatch = 0
+        let lastPatch = len( allpatches ) - 1
+    endif
+
+    " Filter with first and last patch
+
+    let filteredPatches = []
+
+    for idx in range( firstPatch, lastPatch )
+        call add( filteredPatches, allpatches[idx] )
+    endfor
+
+    " Now for each mail, open a thunderbird window : (open it in reverse order
+    " so that the first on the screen is the first patch                      
+
+    for idx in range( len( filteredPatches ) - 1, 0, -1)
+	let headers = system( "quilt header " . filteredPatches[ idx ] )
+	
+	if headers =~ '\<Subject:'
+	    let subject = substitute( headers, '.*\<Subject:', '', '')
+	    let subject = substitute( subject, '\n.*', '', '')
+	    let headers = substitute( headers, "Subject:[^\n]*\n", '', '' )
+	else
+	    let subject = g:QuiltSubject
+	endif
+
+	let subject = substitute( subject,'@num@',idx + 1, 'g' )
+	let subject = substitute( subject,'@total@',len( filteredPatches),'g')
+	let subject = substitute( subject,'@name@',filteredPatches[idx],'g')
+
+	call <SID>ThunderBirdMail( a:dest, subject, headers, 'patches/' 
+		  \	         . filteredPatches[idx] )
+	exec 'sleep ' . g:QuiltMailSleep
+    endfor
+
+
+    " Now create a mail for each of those guys
+
+endfunction
+
+
+function! <SID>ThunderBirdMail( dest, subject, body, ... )
+
+    let attachment = ''
+
+    if a:0 > 0
+	for x in range( 1, a:0 )
+
+	    if a:{x} =~ '^/'
+		let filename = a:{x}
+	    else
+		let filename = getcwd() . '/' . a:{x}
+	    endif
+
+	    let attachment = attachment . ',attachment=file://' . filename
+
+	endfor
+
+    endif
+
+
+    let cmd = 'thunderbird -compose '
+
+    let cmd = cmd . "'"
+
+    let cmd = cmd . 'to=' . a:dest
+    let cmd = cmd . ',subject=' . substitute(a:subject, ',', ';', 'g' )
+    let cmd = cmd . ',body=' . substitute(a:body, ',', ';', 'g' )
+    let cmd = cmd . attachment
+
+    let cmd = cmd . "'"
+
+    if has('unix')
+	let cmd = cmd . ' &'
+    endif
+
+    call system( cmd )
+
+endfunction
+
+
+" List files contained in a patch
 
 function! <SID>QuiltFiles( ... )
     if <SID>IsQuiltDirectory() == 0 
@@ -98,6 +262,38 @@ function! <SID>QuiltFiles( ... )
  
 endfunction
 
+"                                                                              
+" List all patches modifying the file                                          
+"                                                                              
+
+function! <SID>QuiltPatches( ... )
+
+    let patches = split( <SID>ListAllPatches(), '\n' )
+
+    let i = 0
+
+    if a:0 == 1
+        let thefile = a:1    
+    else 
+        let thefile = expand( "%" )
+    endif
+
+    if thefile == ''
+        echohl WarningMsg
+        echo "No file specified, and no file opened ..."
+        echohl none
+        return 0
+    endif
+
+    while i < len( patches )
+        if <SID>ListAllFiles( patches[i] ) =~ thefile
+            echo patches[i]
+        endif
+
+        let i = i + 1
+    endwhile
+
+endfunction
 
 "                                                                              
 " Create a new patch on the top of the patch stack                             
@@ -347,6 +543,13 @@ function! <SID>QuiltAdd( ... )
         let cmd = cmd . a:1
     else 
         let cmd = cmd . expand( "%" )
+
+        if expand( '%' ) == '' 
+            echohl WarningMsg
+            echo "No file specified, and no file opened ..."
+            return 0
+            echohl none
+        endif
     endif
 
     let ret = system( cmd . " 2>&1" )
@@ -381,6 +584,14 @@ function! <SID>QuiltRemove( ... )
         let cmd = cmd . a:1
     else 
         let cmd = cmd . expand( "%" )
+
+        if expand( '%' ) == '' 
+            echohl WarningMsg
+            echo "No file specified, and no file opened ..."
+            return 0
+            echohl none
+        endif
+
     endif
 
     let ret = system( cmd . " 2>&1" )
@@ -716,8 +927,14 @@ endfunction
 "
 " List all files included in the current patch 
 "
-function! <SID>ListAllFiles()
-    return system('quilt files 2>/dev/null')
+function! <SID>ListAllFiles( ... )
+    let cmd = "quilt files " 
+    
+    if a:0 == 1 
+        let cmd = cmd . " " . a:1
+    endif
+
+    return system( cmd . ' 2>/dev/null')
 endfunction
 
 "
