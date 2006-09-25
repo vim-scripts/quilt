@@ -390,3 +390,9 @@ B. Changelog						       *quilt-changelog*
 	* Fixed some bugs ...                                                  
 	* Spellchecked the help ;)                                             
 <
+
+0.6..1 : [2006/09/25]
+>
+	* Fixed the mail feature, special characters are now parsed and        
+	  and rendered properly in thunderbird                                 
+<

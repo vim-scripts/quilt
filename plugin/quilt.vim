@@ -217,9 +217,10 @@ function! <SID>ThunderBirdMail( dest, subject, body, ... )
 
     let cmd = cmd . "'"
 
-    let cmd = cmd . 'to=' . a:dest
-    let cmd = cmd . ',subject=' . substitute(a:subject, ',', ';', 'g' )
-    let cmd = cmd . ',body=' . substitute(a:body, ',', ';', 'g' )
+    let cmd = cmd . 'to=' . <SID>TBEscapeStr( a:dest )
+    let cmd = cmd . ',subject=' . <SID>TBEscapeStr( a:subject )
+    let cmd = cmd . ',body=' . <SID>TBEscapeStr( a:body )
+    
     let cmd = cmd . attachment
 
     let cmd = cmd . "'"
@@ -229,6 +230,18 @@ function! <SID>ThunderBirdMail( dest, subject, body, ... )
     endif
 
     call system( cmd )
+
+endfunction
+
+function! <SID>TBEscapeStr( str )
+
+    let result = a:str
+    let result = substitute( result, ',',  '%2c', 'g' )
+    let result = substitute( result, '"',  '%22', 'g' )
+    let result = substitute( result, "'",  '%27', 'g' )
+    let result = substitute( result, "&",  '%26', 'g' )
+    let result = substitute( result, "?",  '%3f', 'g' )
+    return result
 
 endfunction
 
