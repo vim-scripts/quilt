@@ -19,7 +19,7 @@
 " * a merge interface                                                          
 " * an interface showing the current patch on the bottom                       
 " * allow fold/unfold to see what files are included                           
-" * handle quilt error using quickfix ...                                      
+" * handle quilt error using quickfix (only needed for QuiltPush/Pop)  ...     
 " * auto add the currently modified file                                       
 " * auto refresh on change                                                     
 " * add an indication to know if the patch needs refresh or not                
@@ -39,8 +39,10 @@ command! QuiltStatus call <SID>QuiltStatus()
 
 command! -nargs=? -bang -complete=custom,QuiltCompleteInAppliedPatch   
        \ QuiltPop  call <SID>QuiltPop("<bang>", <f-args>)
+command! -bang QuiltPopAll call <SID>QuiltPopAll( "<bang>" )
 command! -nargs=? -bang -complete=custom,QuiltCompleteInUnAppliedPatch 
        \ QuiltPush call <SID>QuiltPush("<bang>", <f-args>)
+command! -bang QuiltPushAll call <SID>QuiltPushAll( "<bang>" )
 command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch          
        \ QuiltGoTo call <SID>QuiltGoTo("<bang>", <f-args>)
 
@@ -71,11 +73,125 @@ command! -nargs=? -complete=file QuiltPatches call <SID>QuiltPatches(<f-args>)
 command! -nargs=+ -complete=custom,QuiltCompleteInPatch
        \ QuiltMail call <SID>QuiltMail( <f-args> )
 
+command! -nargs=+ -complete=custom,QuiltCompleteInPatch
+       \ QuiltRename call <SID>QuiltRename( <f-args> )
+
+command! -nargs=? -complete=custom,QuiltCompleteInPatch
+       \ QuiltHeader call <SID>QuiltHeader( <f-args> )
+
+
 let g:QuiltSubject = '[patch @num@/@total@] @name@'
 let g:QuiltMailSleep = 1
+let g:QuiltLang = 'en_us'
 
 " TODO
 " command! QuiltInterface call <SID>QuiltInterface()
+
+
+" Create the header view window ... (tabedit)
+function! <SID>QuiltHeader( ... )
+    let cmd = "quilt header "
+    if 1 == a:0
+	let cmd = cmd . a:1
+    endif
+
+    " Get the header
+
+    let header = system( cmd )
+    if ( v:shell_error != 0 )
+	echohl ErrorMsg
+	echo substitute( ret "\n$", "", "" )
+	echohl none
+	return
+    endif
+
+    tabedit
+
+    call <SID>QuiltStatus()
+
+    " Add a default subject line
+
+    if "" == header
+	let header = g:QuiltSubject . "[Enter your subject line here]\n"
+    endif
+
+    
+    " Print the header in the buffer
+    
+    call append( 0, split( header, "\n" ) )
+
+    setlocal nomodified
+    exec "setlocal spell spelllang=".g:QuiltLang
+
+    if 1 == a:0
+	let b:QuiltHeaderName = a:1
+    else
+	let b:QuiltHeaderName = ""
+    endif
+
+    
+
+    command! -buffer QuiltWriteHeader call <SID>QuiltWriteHeader()
+    redraw
+    echohl MoreMsg
+    echo "Now, just :QuiltWriteHeader to write the header"
+    echohl none
+    
+
+endfunction
+
+
+" This function is the counter part of the :QuiltHeader cmd
+function! <SID>QuiltWriteHeader()
+    let cmd = "quilt header -r "
+    if "" != b:QuiltHeaderName 
+	let cmd = cmd . b:QuiltHeaderName
+    endif
+
+    $
+    let end = winline()
+
+    let theFile = substitute( join( getline( 0, end ), "\n" ), '"', '\"', "g" )
+
+    let theCmd = 'echo "' . theFile . '" | ' . cmd
+
+    setlocal nomodified
+    call <SID>DoSystem( theCmd )
+
+endfunction
+
+
+
+" Execute the command and output its result with correct colouring 
+
+function! <SID>DoSystem( cmd )
+
+    let ret = system( a:cmd . " 2>&1" )
+    if v:shell_error != 0
+        echohl ErrorMsg
+    else
+        echohl MoreMsg
+    endif
+    echo substitute( ret, "\n$", "", "" )
+    echohl none
+
+endfunction
+
+
+" Rename a patch 
+function! <SID>QuiltRename( ... )
+
+    let cmd = "quilt rename "
+    if a:0 == 2
+	let cmd = cmd . "-P " . a:1 . " " . a:2
+    else
+	let cmd = cmd . a:1
+    endif
+
+    call <SID>DoSystem( cmd )
+    call <SID>QuiltStatus()
+
+endfunction
 
 
 
@@ -391,18 +507,8 @@ function! <SID>QuiltDelete( bang, ... )
         let cmd = cmd . a:1
 
     endif
-
  
-
-    let ret = system( cmd . " 2>&1" )
-    if v:shell_error != 0
-        echohl ErrorMsg
-    else
-        echohl MoreMsg
-    endif
-    echo ret
-    echohl none
-
+    call <SID>DoSystem( cmd )
     call <SID>QuiltStatus()
 
 endfunction
@@ -513,6 +619,50 @@ function! <SID>QuiltPop( bang, ... )
 
 endfunction
 
+
+"
+" Pushes all patches of the current stack
+"
+
+function! <SID>QuiltPushAll( bang )
+
+    if <SID>IsQuiltDirectory() == 0
+	return 0
+    endif
+
+    let cmd = "!quilt push -a "
+
+    if a:bang == "!"
+        let cmd = cmd . " -f "
+    endif
+
+    exec cmd
+
+    call <SID>QuiltStatus()
+
+endfunction
+
+"
+" Pop all patches of the series
+"
+function! <SID>QuiltPopAll( bang )
+
+    if <SID>IsQuiltDirectory() == 0
+	return 0
+    endif
+
+    let cmd = "!quilt pop -a "
+
+    if a:bang == "!"
+        let cmd = cmd . " -f "
+    endif
+
+    exec cmd
+
+    call <SID>QuiltStatus()
+
+endfunction
+
 "                                                                              
 " Push to the next patch                                                       
 " TODO: Handle the .rej in a separate buffer ... (and add it into a quickfix)  
@@ -565,16 +715,7 @@ function! <SID>QuiltAdd( ... )
         endif
     endif
 
-    let ret = system( cmd . " 2>&1" )
-    if v:shell_error != 0
-        echohl ErrorMsg
-    else
-        echohl MoreMsg
-    endif
-
-    echo substitute( ret, "\n$", "", "" )
-    echohl none
-
+    call <SID>DoSystem( cmd )
     call <SID>QuiltStatus()
 
 endfunction
@@ -607,15 +748,7 @@ function! <SID>QuiltRemove( ... )
 
     endif
 
-    let ret = system( cmd . " 2>&1" )
-    if v:shell_error != 0
-        echohl ErrorMsg
-    else
-        echohl MoreMsg
-    endif
-    echo substitute( ret, "\n$", "", "" )
-    echohl none
-
+    call <SID>DoSystem( cmd )
     call <SID>QuiltStatus()
 endfunction
 
@@ -983,7 +1116,7 @@ endfunction
 
 "
 " Complete in the unapplied patch list :
-" 
+"
 function! QuiltCompleteInUnAppliedPatch( ArgLead, CmdLine, CursorPos )
 
     if <SID>IsQuiltDirectory() 
@@ -993,6 +1126,26 @@ function! QuiltCompleteInUnAppliedPatch( ArgLead, CmdLine, CursorPos )
     return ""
 
 endfunction
+
+"
+" Return the number of the argument to be completed
+"
+function! <SID>CurrentArgNumber( CmdLine, CursorPos )
+    
+    let theCmd = strpart( a:CmdLine, 0, a:CursorPos )
+
+
+    let spaceIdx = stridx( theCmd, ' ' )
+    let argNb = -1
+
+    while spaceIdx != -1 
+	let argNb = argNb + 1
+	let spaceIdx = stridx( theCmd, ' ', spaceIdx + 1)
+    endwhile
+
+    return argNb
+endfunction
+
 
 "
 " Complete in files included in the current patch

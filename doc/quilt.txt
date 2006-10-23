@@ -12,10 +12,11 @@ Using quilt						           *quilt-usage*
 4.  Adding a file to a patch				|:QuiltAdd|
 5.  Refreshing a patch					|:QuiltRefresh|
 6.  Deleting a patch					|:QuiltDelete|
-7.  Removing a file from a patch			|:QuiltRemove|
-8.  Working with the Patch Stack			|quilt-patch-stack|
-9.  Moving a modification from a patch to another	|quilt-move|
-10. More about :Quilt* commands				|quilt-advanced|
+7.  Renaming a patch					|:QuiltRename|
+8.  Removing a file from a patch			|:QuiltRemove|
+9.  Working with the Patch Stack			|quilt-patch-stack|
+10. Moving a modification from a patch to another	|quilt-move|
+11. More about :Quilt* commands				|quilt-advanced|
 A.  Find more about the plug-in				|quilt-about|
 B. Changelog						|quilt-changelog|
 
@@ -71,6 +72,13 @@ To sum up the work-flow :
 
  And so on ... 
 
+Then you can go back to a previous patch using |:QuiltPop| or go further in
+the patch stack |:QuiltPush| (see |quilt-patch-stack|)
+
+And when you've finished to work with your patches, you can mail them for
+instance |:QuiltHeader| |:QuiltMail| (see |quilt-advanced|)
+
+At last quilt makes your patcher life easier :)
 
 ===============================================================================
 2. Setting up the working directory			           *:QuiltSetup*
@@ -145,7 +153,7 @@ refreshed.
 ===============================================================================
 6. Deleting a patch					          *:QuiltDelete*
 
-|QuiltDelete[!]| [patch]     
+|:QuiltDelete[!]| [patch]     
 
 Deletes the patch, default is delete the current patch. If '!' is used, the
 patch file is also deleted.
@@ -153,7 +161,15 @@ patch file is also deleted.
  [patch] is auto-completed, use [tab] to navigate through existing patches
 
 ===============================================================================
-7. Removing a file from a patch				          *:QuiltRemove*
+7. Renaming a patch					          *:QuiltRename*
+
+|:QuiltRename| [patch] <newname>
+
+Rename [patch] to <newname>. If [patch] is not mentionned, rename the current
+patch.
+
+===============================================================================
+8. Removing a file from a patch				          *:QuiltRemove*
 
 |:QuiltRemove|     [file]     
 
@@ -164,7 +180,7 @@ the current file from the patch.
  current patch.
 
 ===============================================================================
-8. Working with the Patch Stack				     *quilt-patch-stack*
+9. Working with the Patch Stack				     *quilt-patch-stack*
 
 One on the most interesting features of quilt is its ability to apply/unapply
 a set of patch. Patches are applied one after the other, like a stack (the
@@ -185,6 +201,14 @@ the quilt command output.
 
  [patch] is auto-completed, use [tab] to navigate through unapplied patches
 
+
+								 *:QuiltPushAll*
+
+|:QuiltPushAll[!]|
+
+Additionally the |:QuiltPushAll[!]| command pushes to the last patch of the
+series. If the '!' is mentioned, the command will be forced (ie using the '-f'
+switch of quilt).
 -------------------------------------------------------------------------------
 								     *:QuiltPop*
 |:QuiltPop[!]| [patch]
@@ -199,6 +223,12 @@ refresh (|:QuiltRefresh| a patch failing to unapply before trying again).
 
  [patch] is auto-completed, use [tab] to navigate through applied patches
 
+								  *:QuiltPopAll*
+|:QuiltPopAll[!]|
+
+Additionally the |:QuiltPopAll[!]| command pops all patches of the series. If
+the '!' is mentioned, the command is forced (ie using the '-f' switch of quilt)
+
 -------------------------------------------------------------------------------
 								    *:QuiltGoTo*
 |:QuiltGoTo[!]|[patch]  
@@ -208,7 +238,7 @@ Push or pop to the specified patch (depending if the patch is applied or not)
  [patch] is auto-completed, use [tab] to navigate through existing patches
 
 ===============================================================================
-9. Moving a modification from a patch to another	            *quilt-move*
+10. Moving a modification from a patch to another	            *quilt-move*
 
 ***Warning This feature is not stable in the 0.5 version. Use it with care.***
 
@@ -234,7 +264,7 @@ Finishes a move initiated with |:QuiltMoveTo| This command must be issued on
 the %-new buffer to work, or strange results may occur.
 
 ===============================================================================
-10. More about :Quilt* commands				        *quilt-advanced*
+11. More about :Quilt* commands				        *quilt-advanced*
 
 								  *:QuiltStatus*
 
@@ -282,6 +312,9 @@ If [patch2] is not specified, only send [patch1]
 Since thunderbird needs some time to open a window, you may have to tune the 
 |g:QuiltMailSleep| (default is 1)
 
+The text of the message is directly taken out of the header, see |:QuiltHeader|
+for more information about setting the header.
+
 							      *g:QuiltMailSleep*
 
 |g:QuiltMailSleep|
@@ -293,11 +326,16 @@ compose window using thunderbird. Default is 1
 <
 sets it to two seconds ...
 
+								   *g:QuiltLang*
+|g:QuiltLang|
+
+The lang of the spell checking for patches headers (default en_US)
+
 								*g:QuiltSubject*
 |g:QuiltSubject|
 
 This variable is used in case no other subject can be taken out of a patch
-header, when using |:QuiltMail| command. The default is :
+header, when using |:QuiltMail| command. The default is:
 
 >
 	let g:QuiltSubject = '[patch @num@/@total@] @name@'
@@ -313,7 +351,28 @@ In the subject line (coming from this variable, or coming from a patch header),
     @name@ is replaced by the filename of the patch
 
 (remember |:QuiltMail| creates one message per patch, so only @total@ is a 
-constant, others are different on each mail)
+constant, other are different on each mail)
+
+This variable is also used for the creation of empty headers (see |:QuiltHeader|
+
+
+								  *:QuiltHeader*
+|:QuiltHeader| [patch]
+
+This command opens a header tab for the given [patch] (if [patch] is not 
+supplied the current topmost patch is used)
+
+In case the header is empty, the header is initialized with the |g:QuiltSubject|
+variable content. Moreover, this commands set 'spell', and 'spelllang' to 
+|g:QuiltLang|
+
+To write the header, you must then call |:QuiltWriteHeader|
+
+							     *:QuiltWriteHeader*
+|:QuiltWriteHeader|
+
+This command writes the header to the patch (formerly set by |:QuiltHeader|)
+This command can only be used in a tab opened by|:QuiltHeader|
 
 ===============================================================================
 A. Find more about the plug-in				           *quilt-about*
@@ -339,7 +398,7 @@ B. Changelog						       *quilt-changelog*
 
 0.1a : (2006/09/13)
 >
-	* Initial plugin creation                                              
+	* Initial plug-in creation                                             
 <                                                                             
 0.2b : (2006/09/15)
 >
@@ -353,9 +412,9 @@ B. Changelog						       *quilt-changelog*
 
 0.3  : [2006/09/17]                                                          
 >
-	* Added the ! argument for Pop,Push,Refresh                            
+	* Added the '!' argument for Pop,Push,Refresh                          
 	* Added the QuiltMoveTo/QuiltFinishMove command                        
-	* Spellchecked the Changelog ;)                                        
+	* Spell-checked the Changelog ;)                                       
 	* Fixed the QuiltRefresh bug                                           
 	* Fixed QuiltAdd definition bug                                        
 	* Added QuiltGoTo[!] (Push/Pop)                                        
@@ -393,6 +452,17 @@ B. Changelog						       *quilt-changelog*
 
 0.6..1 : [2006/09/25]
 >
-	* Fixed the mail feature, special characters are now parsed and        
+	* Fixed the mail feature, special characters are now parsed            
 	  and rendered properly in thunderbird                                 
+<
+
+0.7 : [2006/10/23]
+>
+	* Added QuiltRename command                                            
+	* Factorized code (adding DoSystem function)                           
+	* Added QuiltPushAll command                                           
+	* Added QuiltPopAll command                                            
+	* Added internal <SID>CurrentArgNumber                                 
+	* Added QuiltHeader command                                            
+	* Added QuiltWriteHeader command                                       
 <
