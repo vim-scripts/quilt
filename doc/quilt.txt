@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.6)
+This file extensively describes the quilt plug-in usage (version 0.8)
 
 Using quilt						           *quilt-usage*
 
@@ -128,14 +128,17 @@ if this directory does not exist.
 ===============================================================================
 4. Adding a file to a patch				             *:QuiltAdd*
 
-|:QuiltAdd| [file]     
+|:QuiltAdd| [file] [patch]    
 
 Adds [file] to the current patch. If [file] is not specified, the current file
 is added to the patch. The file must be added before any modification. Only
-modifications done after |:QuiltAdd|will be added to the patch on
+modifications done after |:QuiltAdd|will be added to the patch on next call to
 |:QuiltRefresh:|
 
- [file] is auto-completed, use [tab] to navigate through existing files
+If [patch] is not mentioned, [file] is added to the topmost (current) patch.
+
+ [file] is auto-completed, use [tab] to navigate through existing files.
+ [patch] is also auto-completed, use [tab] to navigate through patches.
 
 ===============================================================================
 5. Refreshing a patch					         *:QuiltRefresh*
@@ -176,8 +179,17 @@ patch.
 Removes the file from the current patch. If [file] is not specified, removes
 the current file from the patch.
 
- [file] is auto-completed, use [tab] to navigate through files present in the
+ [file] is auto-completed, use <TAB> to navigate through files present in the
  current patch.
+
+-------------------------------------------------------------------------------
+							    *:QuiltRemoveFrom*
+|:QuiltRemoveFrom| <patch> [file]
+
+Removes [file] from <patch> (Same as|:QuiltRemove|)
+
+ <patch> is auto-completed, use <TAB> to navigate through patches.
+ [file] is auto-completed, use <TAB> to navigate though files in the <patch>
 
 ===============================================================================
 9. Working with the Patch Stack				     *quilt-patch-stack*
@@ -202,6 +214,7 @@ the quilt command output.
  [patch] is auto-completed, use [tab] to navigate through unapplied patches
 
 
+-------------------------------------------------------------------------------
 								 *:QuiltPushAll*
 
 |:QuiltPushAll[!]|
@@ -223,6 +236,7 @@ refresh (|:QuiltRefresh| a patch failing to unapply before trying again).
 
  [patch] is auto-completed, use [tab] to navigate through applied patches
 
+-------------------------------------------------------------------------------
 								  *:QuiltPopAll*
 |:QuiltPopAll[!]|
 
@@ -257,6 +271,7 @@ If '!' is supplied, directly call |:QuiltFinishMove|
 
  [patch] is auto-completed, use [tab] to navigate through existing patches
 
+-------------------------------------------------------------------------------
 							      *:QuiltFinishMove*
 |:QuiltFinishMove[!]|
 
@@ -315,6 +330,28 @@ Since thunderbird needs some time to open a window, you may have to tune the
 The text of the message is directly taken out of the header, see |:QuiltHeader|
 for more information about setting the header.
 
+<destaddr> is searched in the|g:QuiltMailAddresses|list, use <TAB> to
+naviguate in the email list.
+
+[patch1]/|patch2] are searched into the patch list, use <TAB> to navigate in
+the existing patch list.
+
+-------------------------------------------------------------------------------
+							  *g:QuiltMailAddresses*
+
+|g:QuiltMailAddresses|sets the list of automatically complted emails for
+|:QuiltMail|command default is :
+>
+	let g:QuiltMailAddresses = [ 'test@localhost.com' ]
+<
+
+you can add more into your .vimrc :
+>
+	let g:QuiltMailAddresses = [ 'test@localhost.com'
+	                         \ , 'someotherplace@here.com
+	                         \ , ... ]
+<
+-------------------------------------------------------------------------------
 							      *g:QuiltMailSleep*
 
 |g:QuiltMailSleep|
@@ -326,11 +363,13 @@ compose window using thunderbird. Default is 1
 <
 sets it to two seconds ...
 
+-------------------------------------------------------------------------------
 								   *g:QuiltLang*
 |g:QuiltLang|
 
 The lang of the spell checking for patches headers (default en_US)
 
+-------------------------------------------------------------------------------
 								*g:QuiltSubject*
 |g:QuiltSubject|
 
@@ -356,6 +395,7 @@ constant, other are different on each mail)
 This variable is also used for the creation of empty headers (see |:QuiltHeader|
 
 
+-------------------------------------------------------------------------------
 								  *:QuiltHeader*
 |:QuiltHeader| [patch]
 
@@ -368,6 +408,7 @@ variable content. Moreover, this commands set 'spell', and 'spelllang' to
 
 To write the header, you must then call |:QuiltWriteHeader|
 
+-------------------------------------------------------------------------------
 							     *:QuiltWriteHeader*
 |:QuiltWriteHeader|
 
@@ -466,3 +507,20 @@ B. Changelog						       *quilt-changelog*
 	* Added QuiltHeader command                                            
 	* Added QuiltWriteHeader command                                       
 <
+0.8: [2006/10/26]
+>
+	* Added completion of patches directory for QuiltNew                   
+	* Beautified the help file :)                                          
+	* Added patch argument for QuiltAdd                                    
+	* Changed the completion of QuiltAdd (first arg file, second patch )   
+	* Added QuiltRemoveFrom command                                        
+	* Added QuiltRemoveFrom completion (patch, then files in <patch>)      
+	* Beautified the code (comments and such ...)                          
+	* Added QuiltMail email address completion                             
+	* Fixed QuiltHeader to add the correct 'Subject:' template             
+	* Added a status line in QuiltHeader to show the current patch name    
+	* Fixed a little bug in QuiltHeader preventing to Push/Pop whille      
+	  editing a header                                                     
+<
+-------------------------------------------------------------------------------
+ vim:ft=help:norl:

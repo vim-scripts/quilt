@@ -4,6 +4,9 @@
 " Author:     Florian Delizy <florian.delizy@unfreeze.net>                     
 " Maintainer: Florian Delizy <florian.delizy@unfreeze.net>                     
 "                                                                              
+" Install:                                                                     
+" uncompress in your .vim/ directory, then :helptag ~/.vim/doc to get the help 
+"                                                                              
 " Usage:                                                                       
 " :help quilt-usage                                                            
 "                                                                              
@@ -18,15 +21,15 @@
 " * a real interface like DirDiff                                              
 " * a merge interface                                                          
 " * an interface showing the current patch on the bottom                       
-" * allow fold/unfold to see what files are included                           
+"   - allow fold/unfold to see what files are included                         
+"   - add a background color to highlight what                                 
+"     belong to what patch (might be possible for only one patch ?             
 " * handle quilt error using quickfix (only needed for QuiltPush/Pop)  ...     
 " * auto add the currently modified file                                       
 " * auto refresh on change                                                     
 " * add an indication to know if the patch needs refresh or not                
 " * add a Quilt command that takes the cmd as a parameter                      
 " * prevent the writing if the file is in no patch (without the ! option)      
-" * with the DirDiff inteface, add a background color to highlight what        
-"   belong to what patch (might be possible for only one patch ?               
 " * add an info to show to which patch belong a chunk                          
 
 
@@ -46,10 +49,12 @@ command! -bang QuiltPushAll call <SID>QuiltPushAll( "<bang>" )
 command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch          
        \ QuiltGoTo call <SID>QuiltGoTo("<bang>", <f-args>)
 
-command! -nargs=? -complete=file                                       
+command! -nargs=* -complete=custom,QuiltCompleteForAdd
        \ QuiltAdd call <SID>QuiltAdd(<f-args>)
 command! -nargs=? -complete=custom,QuiltCompleteInFiles                
        \ QuiltRemove call <SID>QuiltRemove(<f-args>)
+command! -nargs=+ -complete=custom,QuiltCompleteForRemoveFrom
+       \ QuiltRemoveFrom call <SID>QuiltRemoveFrom(<f-args>)
 
 command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch          
        \ QuiltRefresh call <SID>QuiltRefresh("<bang>", <f-args> )
@@ -61,7 +66,9 @@ command! -bang QuiltFinishMove call <SID>QuiltFinishMove( "<bang>" )
 command! -nargs=1 -complete=dir -bang                                  
        \ QuiltSetup call <SID>QuiltSetup( "<bang>", <f-args> )
 
-command! -nargs=+ -bang QuiltNew call <SID>QuiltNew( "<bang>", <f-args> )
+command! -nargs=+ -bang -complete=custom,QuiltCompleteInPatchesDir
+       \ QuiltNew call <SID>QuiltNew( "<bang>", <f-args> )
+
 command! -nargs=? -bang -complete=custom,QuiltCompleteInPatch
        \ QuiltDelete call <SID>QuiltDelete( "<bang>", <f-args> )
 
@@ -70,7 +77,7 @@ command! -nargs=? -complete=custom,QuiltCompleteInPatch
        \ QuiltFiles call <SID>QuiltFiles( <f-args> )
 command! -nargs=? -complete=file QuiltPatches call <SID>QuiltPatches(<f-args>)
 
-command! -nargs=+ -complete=custom,QuiltCompleteInPatch
+command! -nargs=+ -complete=custom,QuiltCompleteForMail
        \ QuiltMail call <SID>QuiltMail( <f-args> )
 
 command! -nargs=+ -complete=custom,QuiltCompleteInPatch
@@ -83,10 +90,7 @@ command! -nargs=? -complete=custom,QuiltCompleteInPatch
 let g:QuiltSubject = '[patch @num@/@total@] @name@'
 let g:QuiltMailSleep = 1
 let g:QuiltLang = 'en_us'
-
-" TODO
-" command! QuiltInterface call <SID>QuiltInterface()
-
+let g:QuiltMailAddresses = [ 'test@localhost.com' ]
 
 " Create the header view window ... (tabedit)
 function! <SID>QuiltHeader( ... )
@@ -100,7 +104,7 @@ function! <SID>QuiltHeader( ... )
     let header = system( cmd )
     if ( v:shell_error != 0 )
 	echohl ErrorMsg
-	echo substitute( ret "\n$", "", "" )
+	echo substitute( ret . "\n$", "", "" )
 	echohl none
 	return
     endif
@@ -109,10 +113,11 @@ function! <SID>QuiltHeader( ... )
 
     call <SID>QuiltStatus()
 
+
     " Add a default subject line
 
     if "" == header
-	let header = g:QuiltSubject . "[Enter your subject line here]\n"
+	let header = "Subject: " . g:QuiltSubject . "[Enter your subject line here]\n"
     endif
 
     
@@ -126,8 +131,10 @@ function! <SID>QuiltHeader( ... )
     if 1 == a:0
 	let b:QuiltHeaderName = a:1
     else
-	let b:QuiltHeaderName = ""
+	let b:QuiltHeaderName = g:QuiltCurrentPatch
     endif
+
+    setlocal statusline=%0.70(%{b:QuiltHeaderName}\ hdr%m\ :w=:QuiltW%)\ %=%0.10(%l,%c\ %P%)
 
     
 
@@ -206,7 +213,7 @@ function! <SID>QuiltMail( dest, ... )
 	return 0
     endif
 
-    let allpatches = split( <SID>ListAllPatches(), '\n' )
+    let allpatches = split( <SID>ListAllPatches(), "\n" )
 
     " filter patches
 
@@ -286,17 +293,21 @@ function! <SID>QuiltMail( dest, ... )
     for idx in range( len( filteredPatches ) - 1, 0, -1)
 	let headers = system( "quilt header " . filteredPatches[ idx ] )
 	
+	let headers = substitute( headers,'@num@',idx + 1, 'g' )
+	let headers = substitute( headers,'@total@',len( filteredPatches),'g')
+	let headers = substitute( headers,'@name@',filteredPatches[idx],'g')
+
 	if headers =~ '\<Subject:'
 	    let subject = substitute( headers, '.*\<Subject:', '', '')
 	    let subject = substitute( subject, '\n.*', '', '')
 	    let headers = substitute( headers, "Subject:[^\n]*\n", '', '' )
 	else
 	    let subject = g:QuiltSubject
+	    let subject = substitute( subject,'@num@',idx + 1, 'g' )
+	    let subject = substitute( subject,'@total@',len( filteredPatches),'g')
+	    let subject = substitute( subject,'@name@',filteredPatches[idx],'g')
 	endif
 
-	let subject = substitute( subject,'@num@',idx + 1, 'g' )
-	let subject = substitute( subject,'@total@',len( filteredPatches),'g')
-	let subject = substitute( subject,'@name@',filteredPatches[idx],'g')
 
 	call <SID>ThunderBirdMail( a:dest, subject, headers, 'patches/' 
 		  \	         . filteredPatches[idx] )
@@ -349,6 +360,9 @@ function! <SID>ThunderBirdMail( dest, subject, body, ... )
 
 endfunction
 
+"                                                                              
+" Escape a string to fit the Thundebird command line                           
+"                                                                              
 function! <SID>TBEscapeStr( str )
 
     let result = a:str
@@ -362,7 +376,9 @@ function! <SID>TBEscapeStr( str )
 endfunction
 
 
-" List files contained in a patch
+"                                                                              
+" List files contained in a patch                                              
+"                                                                              
 
 function! <SID>QuiltFiles( ... )
     if <SID>IsQuiltDirectory() == 0 
@@ -377,7 +393,7 @@ function! <SID>QuiltFiles( ... )
 
     endif
 
-    let fileList = split( system( cmd . " 2>&1" ), '\n' )
+    let fileList = split( system( cmd . " 2>&1" ), "\n" )
     let cexprList = []
     let i = 0
     while i < len( fileList )
@@ -397,7 +413,7 @@ endfunction
 
 function! <SID>QuiltPatches( ... )
 
-    let patches = split( <SID>ListAllPatches(), '\n' )
+    let patches = split( <SID>ListAllPatches(), "\n" )
 
     let i = 0
 
@@ -592,9 +608,9 @@ function! <SID>QuiltSetup( bang, patchdir )
 endfunction
 
 
-"
-" Pop the current patch
-"
+"                                                                              
+" Pop the current patch                                                        
+"                                                                              
 
 function! <SID>QuiltPop( bang, ... )
     
@@ -620,9 +636,9 @@ function! <SID>QuiltPop( bang, ... )
 endfunction
 
 
-"
-" Pushes all patches of the current stack
-"
+"                                                                              
+" Pushes all patches of the current stack                                      
+"                                                                              
 
 function! <SID>QuiltPushAll( bang )
 
@@ -642,9 +658,9 @@ function! <SID>QuiltPushAll( bang )
 
 endfunction
 
-"
-" Pop all patches of the series
-"
+"                                                                              
+" Pop all patches of the series                                                
+"                                                                              
 function! <SID>QuiltPopAll( bang )
 
     if <SID>IsQuiltDirectory() == 0
@@ -692,8 +708,6 @@ endfunction
 "                                                                              
 " Add the file to the current Quilt patch                                      
 "                                                                              
-" TODO: Handle the -P patch command arg                                        
-"                                                                              
 function! <SID>QuiltAdd( ... )
 
     if <SID>IsQuiltDirectory() == 0 
@@ -715,6 +729,10 @@ function! <SID>QuiltAdd( ... )
         endif
     endif
 
+    if 2 == a:0
+	let cmd = cmd . " -P " . a:2
+    endif
+
     call <SID>DoSystem( cmd )
     call <SID>QuiltStatus()
 
@@ -722,8 +740,6 @@ endfunction
 
 "                                                                              
 " Remove the file from the current patch                                       
-"                                                                              
-" TODO: Handle the -P patch command arg                                        
 "                                                                              
 
 function! <SID>QuiltRemove( ... )
@@ -734,7 +750,7 @@ function! <SID>QuiltRemove( ... )
 
     let cmd= "quilt remove "
 
-    if a:0 >= 1
+    if a:0 == 1
         let cmd = cmd . a:1
     else 
         let cmd = cmd . expand( "%" )
@@ -752,13 +768,48 @@ function! <SID>QuiltRemove( ... )
     call <SID>QuiltStatus()
 endfunction
 
-" refresh the current patch
+"                                                                              
+" Remove the file from the a:1 patch                                           
+"                                                                              
+
+function! <SID>QuiltRemoveFrom( ... )
+
+    if <SID>IsQuiltDirectory() == 0 
+        return 0
+    endif
+
+    if a:0 < 1
+	echohl ErrorMsg
+	echo "Not enough parameters ... :help :QuiltRemoveFrom"
+	echohl none
+	return 0
+    endif
+
+    let cmd= "quilt remove -P " . a:1 . " "
+
+    if a:0 == 1
+        let cmd = cmd . a:1
+    else 
+        let cmd = cmd . expand( "%" )
+
+        if expand( '%' ) == '' 
+            echohl WarningMsg
+            echo "No file specified, and no file opened ..."
+            return 0
+            echohl none
+        endif
+
+    endif
+
+    call <SID>DoSystem( cmd )
+    call <SID>QuiltStatus()
+endfunction
+
+"                                                                              
+" refresh the current patch or patch passed as a:1 arg                         
+"                                                                              
 function! <SID>QuiltRefresh( bang, ... )
 
-" TODO: handle warning and errors, handle refresh a specific patch             
-" using cexpr caddexpr cgetexpr and errorformat as well                        
-"
-"
     if <SID>IsQuiltDirectory() == 0 
         return 0
     endif
@@ -787,7 +838,7 @@ function! <SID>QuiltRefresh( bang, ... )
         echohl ErrorMsg
     endif
     
-    let lines =  split( ret, '\n' )
+    let lines =  split( ret, "\n" )
     echo lines[ len(lines) - 1 ]
     echohl none
 
@@ -795,7 +846,9 @@ function! <SID>QuiltRefresh( bang, ... )
 
 endfunction
 
+"                                                                              
 " Builds the cclist (warning list)                                             
+"                                                                              
 
 function! <SID>CreateRefreshWarningList( output )
     
@@ -829,22 +882,22 @@ function! <SID>CreateRefreshWarningList( output )
 
 endfunction
 
-"
+"                                                                              
 " Print the current patch level and set the global variable for the statusline 
-" 
+"                                                                              
 function! <SID>QuiltCurrent()
 
 
     let g:QuiltCurrentPatch = system ("quilt applied | tail -n 1")
-    let g:QuiltCurrentPatch = substitute( g:QuiltCurrentPatch, '\n', '', '' )
+    let g:QuiltCurrentPatch = substitute( g:QuiltCurrentPatch, "\n", '', '' )
     
 "    echo "The last patch is " . g:QuiltCurrentPatch
 
 endfunction
 
-"
-" Quilt Status : refresh all screen quilt info
-"
+"                                                                               
+" Quilt Status : refresh all screen quilt info                                  
+"                                                                               
 
 function! <SID>QuiltStatus()
 
@@ -870,9 +923,9 @@ endfunction
 autocmd BufNewFile,BufReadPost,FileReadPost * QuiltStatus
 
 
-"
-" Start the Quilt interface
-"
+"                                                                               
+" Start the Quilt interface                                                     
+"                                                                               
 
 function! <SID>QuiltInterface()
 
@@ -904,9 +957,9 @@ function! <SID>IsQuiltOK()
 
 endfunction
 
-" 
-" return 0/1 if it is a quilt directory, and error if not
-"
+"                                                                               
+" return 0/1 if it is a quilt directory, and error if not                       
+"                                                                               
 function! <SID>IsQuiltDirectory()
 
     " Must find the patches directory
@@ -922,9 +975,9 @@ function! <SID>IsQuiltDirectory()
     return r
 endfunction
 
-"
-" QuiltGoTo : Push or Pop to a defined patch
-"
+"                                                                               
+" QuiltGoTo : Push or Pop to a defined patch                                    
+"                                                                               
 
 function! <SID>QuiltGoTo( bang, patch )
 
@@ -955,9 +1008,9 @@ function! <SID>QuiltGoTo( bang, patch )
 endfunction
 
 
-"
-" Move the selected modifications to the specified patch
-"
+"                                                                               
+" Move the selected modifications to the specified patch                        
+"                                                                               
 
 function! <SID>QuiltMoveTo( bang,  patch ) range
 
@@ -1022,9 +1075,9 @@ function! <SID>QuiltMoveTo( bang,  patch ) range
 
 endfunction
 
-"
-" Finish a move
-" 
+"                                                                               
+" Finish a move                                                                 
+"                                                                               
 
 function! <SID>QuiltFinishMove( bang )
 
@@ -1047,18 +1100,18 @@ function! <SID>QuiltFinishMove( bang )
 
 endfunction
 
-"
-" returns true if the specified file or directory exists
-" Warning: this is very bash dependant for now ... 
-" 
+"                                                                               
+" returns true if the specified file or directory exists                        
+" Warning: this is very bash dependant for now ...                              
+"                                                                               
 function! <SID>FileExists( filename )
     return system( ' [ -e ' . a:filename . ' ] && echo 1 || echo 0 ' )
 endfunction
 
-"
-" List all patches availables as a string list (one line per patch)
-" Warning: bash dependent !
-"
+"                                                                               
+" List all patches availables as a string list (one line per patch)             
+" Warning: bash dependent !                                                     
+"                                                                               
 function! <SID>ListAllPatches()
     return system('quilt applied 2>/dev/null ; quilt unapplied 2>/dev/null')
 endfunction
@@ -1070,9 +1123,9 @@ endfunction
 function! <SID>ListUnAppliedPatches()
     return system('quilt unapplied 2>/dev/null')
 endfunction
-"
-" List all files included in the current patch 
-"
+"                                                                               
+" List all files included in the current patch                                  
+"                                                                               
 function! <SID>ListAllFiles( ... )
     let cmd = "quilt files " 
     
@@ -1083,14 +1136,15 @@ function! <SID>ListAllFiles( ... )
     return system( cmd . ' 2>/dev/null')
 endfunction
 
-"
-" Completion part (used for commands)
-"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" Completion part (used for commands)                                           
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 
-"
-" Complete in the patch list :
-" 
+
+"                                                                               
+" Complete in the patch list :                                                  
+"                                                                               
 function! QuiltCompleteInPatch( ArgLead, CmdLine, CursorPos )
 
     if <SID>IsQuiltDirectory() 
@@ -1101,9 +1155,9 @@ function! QuiltCompleteInPatch( ArgLead, CmdLine, CursorPos )
 
 endfunction
 
-"
-" Complete in the applied patch list :
-" 
+"                                                                               
+" Complete in the applied patch list :                                          
+"                                                                               
 function! QuiltCompleteInAppliedPatch( ArgLead, CmdLine, CursorPos )
 
     if <SID>IsQuiltDirectory() 
@@ -1114,9 +1168,10 @@ function! QuiltCompleteInAppliedPatch( ArgLead, CmdLine, CursorPos )
 
 endfunction
 
-"
-" Complete in the unapplied patch list :
-"
+"                                                                               
+" Complete in the unapplied patch list :                                        
+"                                                                               
+
 function! QuiltCompleteInUnAppliedPatch( ArgLead, CmdLine, CursorPos )
 
     if <SID>IsQuiltDirectory() 
@@ -1127,9 +1182,9 @@ function! QuiltCompleteInUnAppliedPatch( ArgLead, CmdLine, CursorPos )
 
 endfunction
 
-"
-" Return the number of the argument to be completed
-"
+"                                                                               
+" Return the number of the argument to be completed                             
+"                                                                               
 function! <SID>CurrentArgNumber( CmdLine, CursorPos )
     
     let theCmd = strpart( a:CmdLine, 0, a:CursorPos )
@@ -1147,9 +1202,9 @@ function! <SID>CurrentArgNumber( CmdLine, CursorPos )
 endfunction
 
 
-"
-" Complete in files included in the current patch
-"
+"                                                                               
+" Complete in files included in the current patch                               
+"                                                                               
 
 function! QuiltCompleteInFiles( ArgLead, CmdLine, CursorPos )
 
@@ -1162,14 +1217,12 @@ function! QuiltCompleteInFiles( ArgLead, CmdLine, CursorPos )
 endfunction
 
 
-" 
-" Complete first on the files then on the patches
-"
-" For now useless, but it's a good skeleton for tuning QuiltAdd and
-" QuiltRemove
+"                                                                               
+" Complete first on the files then on the patches                               
+"                                                                               
 function! QuiltCompleteFilesPatch( ArgLead, CmdLine, CursorPos )
 
-    if ( <SID>IsQuiltDirectory() ) 
+    if <SID>IsQuiltDirectory() 
 
         " first arg is in the files, second is in the patches
         
@@ -1184,4 +1237,131 @@ function! QuiltCompleteFilesPatch( ArgLead, CmdLine, CursorPos )
 
     return ""
 
+endfunction
+
+"                                                                               
+" Used to complete in patch directories, return the matching directory          
+" list for the "ArgLead" parameter ...                                          
+"                                                                               
+
+function! QuiltCompleteInPatchesDir( ArgLead, CmdLine, CursorPos )
+
+    if <SID>IsQuiltDirectory() 
+	return <SID>ListDirectories( "patches/", a:ArgLead, "patches/" )
+    endif
+
+    return ""
+
+endfunction
+
+
+"                                                                               
+" List all directories starting in 'root' starting by 'start' and strip         
+" '^strip' from the result                                                      
+"                                                                               
+
+function! <SID>ListDirectories( root, start, strip )
+
+    if "" == a:root || isdirectory( a:root )
+
+	let fileList = split( glob( a:root . a:start . "*" ), "\n" )
+	if !empty(fileList)
+
+	    let dirList = []
+
+	    for x in fileList
+		
+		if isdirectory( x )
+		    let dirList = add( dirList, substitute( x, "^" . a:strip , "", "" ) . "/" )
+		endif
+
+	    endfor
+
+	    return join( dirList, "\n" )
+	endif
+
+    endif
+    return ""
+
+endfunction
+
+"                                                                               
+" List files in root starting by start                                          
+"                                                                               
+
+function! <SID>ListFiles( root, start)
+
+    if "" == a:root || isdirectory( a:root )
+
+	return glob( a:root . a:start . "*" ) 
+
+    endif
+    return ""
+
+endfunction
+
+"                                                                               
+" Completion for Add (file, then patch )                                        
+"                                                                               
+function! QuiltCompleteForAdd( ArgLead, CmdLine, CursorPos )
+
+    if <SID>IsQuiltDirectory() 
+	let argn = <SID>CurrentArgNumber( a:CmdLine, a:CursorPos )
+
+	if 0 == argn
+	    return <SID>ListFiles( "", a:ArgLead )
+	endif
+
+	if 1 == argn
+	    return QuiltCompleteInPatch( a:ArgLead, a:CmdLine, a:CursorPos )
+	endif
+
+    endif
+
+    return ""
+endfunction
+
+
+"                                                                               
+" Completion for RemoveFrom ( patch, then included files )                      
+"                                                                               
+function! QuiltCompleteForRemoveFrom( ArgLead, CmdLine, CursorPos )
+
+    if <SID>IsQuiltDirectory() 
+	let argn = <SID>CurrentArgNumber( a:CmdLine, a:CursorPos )
+
+	if 0 == argn
+	    return QuiltCompleteInPatch( a:ArgLead, a:CmdLine, a:CursorPos )
+	endif
+
+	if 1 == argn
+	    let patch = substitute( a:CmdLine, '^QuiltRemoveFrom \([^[:blank:]]*\) .*$', '\1', '' )
+
+	    return <SID>ListAllFiles( patch )
+	endif
+
+    endif
+
+    return ""
+endfunction
+
+"                                                                               
+" Completion for Add (file, then patch )                                        
+"                                                                               
+function! QuiltCompleteForMail( ArgLead, CmdLine, CursorPos )
+
+    if <SID>IsQuiltDirectory() 
+	let argn = <SID>CurrentArgNumber( a:CmdLine, a:CursorPos )
+
+	if 0 == argn
+	    return join( g:QuiltMailAddresses, "\n" )
+	endif
+
+	if 1 == argn
+	    return QuiltCompleteInPatch( a:ArgLead, a:CmdLine, a:CursorPos )
+	endif
+
+    endif
+
+    return ""
 endfunction
