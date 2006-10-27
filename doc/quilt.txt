@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.8)
+This file extensively describes the quilt plug-in usage (version 0.8.1)
 
 Using quilt						           *quilt-usage*
 
@@ -521,6 +521,10 @@ B. Changelog						       *quilt-changelog*
 	* Added a status line in QuiltHeader to show the current patch name    
 	* Fixed a little bug in QuiltHeader preventing to Push/Pop whille      
 	  editing a header                                                     
+<
+0.8.1 [2006/10/27]
+>
+	* Fixed the nocompatible option that caused problem in 'compatible'    
 <
 -------------------------------------------------------------------------------
  vim:ft=help:norl:

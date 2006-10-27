@@ -36,7 +36,7 @@
 "------------------------------------------------------------------------------
 " Commands definition                                                          
 "------------------------------------------------------------------------------
-
+let cpocopy=&cpo | set cpo-=C
 
 command! QuiltStatus call <SID>QuiltStatus()
 
@@ -1365,3 +1365,5 @@ function! QuiltCompleteForMail( ArgLead, CmdLine, CursorPos )
 
     return ""
 endfunction
+
+let &cpo = cpocopy
