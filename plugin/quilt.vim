@@ -102,12 +102,17 @@ let g:QuiltSubject = '[patch @num@/@total@] @name@'
 let g:QuiltMailSleep = 1
 let g:QuiltLang = 'en_us'
 let g:QuiltMailAddresses = [ 'test@localhost.com' ]
-
+let g:QuiltAnnotateFollowLine = 1
 
 
 " Opens an interface with the quilt annotate informations :
 
 function! <SID>QuiltAnnotate( bang, ... )
+
+    let DoCursor = 0
+    if exists( "g:QuiltAnnotateFollowLine" ) && g:QuiltAnnotateFollowLine 
+	let DoCursor = 1
+    endif
 
     let cmd = "quilt annotate "
 
@@ -147,6 +152,7 @@ function! <SID>QuiltAnnotate( bang, ... )
     wincmd l
     wincmd |
     wincmd h
+    autocmd BufUnload <buffer> call <SID>QuitAnnotateJ()
 
     " Create the patch name window
     new
@@ -154,6 +160,7 @@ function! <SID>QuiltAnnotate( bang, ... )
     wincmd k
     wincmd _
     wincmd j
+    autocmd BufUnload <buffer> call <SID>QuitAnnotateH()
 
     " Parse the result
 
@@ -183,8 +190,11 @@ function! <SID>QuiltAnnotate( bang, ... )
     setlocal nomodified
     setlocal nomodifiable
     set noscrollbind
+    if DoCursor
+        setlocal cursorline
+    endif
     0
-    resize 10
+    resize 5
 
     wincmd k
     wincmd h
@@ -193,13 +203,57 @@ function! <SID>QuiltAnnotate( bang, ... )
     setlocal nomodified
     setlocal nomodifiable
     set scrollbind
+
+    if DoCursor
+        setlocal cursorline
+    endif
     0
 
     wincmd l
     set scrollbind
 
+    if DoCursor
+	setlocal cursorline
+        autocmd CursorMoved <buffer>  call <SID>FollowCursorLine()
+    endif
+
 endfunction
 
+
+" Autocmd used to follow the cursor
+
+function! <SID>FollowCursorLine()
+    let ln = line( "." )
+    wincmd h
+    exec ln
+    let ln = getline( "." )
+    wincmd j
+    exec ln
+    redraw
+    wincmd k
+    wincmd l
+    redraw!
+endfunction
+
+" used to quit the buffer annotate mode
+
+function! <SID>QuitAnnotateJ()
+    wincmd j
+    quit
+    wincmd k
+    wincmd l
+    autocmd! CursorMoved <buffer> 
+    setlocal nocursorline
+
+function! <SID>QuitAnnotateH()
+    wincmd k
+    quit
+    wincmd l
+    autocmd! CursorMoved <buffer> 
+    setlocal nocursorline
+
+endfunction
+endfunction
 
 " Open the patch in a new tab regarding it's name
 

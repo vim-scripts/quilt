@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.9)
+This file extensively describes the quilt plug-in usage (version 0.9.1)
 
 Using quilt						           *quilt-usage*
 
@@ -427,14 +427,14 @@ This command can only be used in a tab opened by|:QuiltHeader|
 							       *:QuiltPatchEdit*
 |:QuiltPatchEdit| [patch]
 
-open a tab editing the given [patch] if [patch] is ommited, the current patch
+Open a tab editing the given [patch] if [patch] is ommited, the current patch
 is opened.
 
 -------------------------------------------------------------------------------
 							        *:QuiltAnnotate*
 |:QuiltAnnotate[!]| [file]
 
-opens an interface showing which patch modifies which line of [file] or the 
+Opens an interface showing which patch modifies which line of [file] or the 
 current file if [file] is ommited. If [file] is specified, it is opened in the
 current buffer (force with '!' if you want to open it even if modified).
 The interface looks like the following :
@@ -449,11 +449,25 @@ The interface looks like the following :
 + m patchName                       +
 +-----------------------------------+
 
-the left split shows a number, which references the number on the bottom split.
+The left split shows a number, which references the number on the bottom split.
 In the bottom split, the number is translated into corresponding patch name.
 
 (This information is only relevant if the patch is refreshed with all changes
 and thus, is not anymore when the file gets modified).
+
+The current line is highlighted for better readability, and the current patch
+(corresponding to the current line) is highlighted too. The drawback is that
+the refresh is a little slow ... 
+
+The interface is closed when either the number or patch buffer is closed.
+
+						     *g:QuiltAnnotateFollowLine*
+
+You can disable the follow cursor by setting the |g:QuiltAnnotateFollowLine|
+variable to 0 :
+>
+	:let g:QuiltAnnotateFollowLine = 0
+>
 ===============================================================================
 A. Find more about the plug-in				           *quilt-about*
 
@@ -576,6 +590,11 @@ B. Changelog						       *quilt-changelog*
 	* Added QuiltAnnotate command                                          
 	* Fixed autocmd usage, so that commands are deleted on :source         
 	* Added the license (GPL of course)                                    
+<
+0.9.1 [2006/11/06]
+>
+	* Added a function to keep the current line in QuiltAnnotate           
+	* Added auto close interface when one is closed                        
 <
 -------------------------------------------------------------------------------
  vim:ft=help:norl:
