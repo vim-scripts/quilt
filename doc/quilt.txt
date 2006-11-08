@@ -596,5 +596,10 @@ B. Changelog						       *quilt-changelog*
 	* Added a function to keep the current line in QuiltAnnotate           
 	* Added auto close interface when one is closed                        
 <
+0.9.2 [2006/11/07]
+>
+	* Fixed QuiltAnnotate Interface when anotating a file not from the 0   
+	  line (the Followcursor was not working)                              
+>
 -------------------------------------------------------------------------------
  vim:ft=help:norl:

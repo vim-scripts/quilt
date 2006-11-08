@@ -108,6 +108,7 @@ let g:QuiltAnnotateFollowLine = 1
 " Opens an interface with the quilt annotate informations :
 
 function! <SID>QuiltAnnotate( bang, ... )
+    let currentLine = line( "." )
 
     let DoCursor = 0
     if exists( "g:QuiltAnnotateFollowLine" ) && g:QuiltAnnotateFollowLine 
@@ -144,6 +145,8 @@ function! <SID>QuiltAnnotate( bang, ... )
 	echohl None
 	return
     endif
+
+    0
 
     " Create the patch number window
     vnew
@@ -202,16 +205,19 @@ function! <SID>QuiltAnnotate( bang, ... )
     call append( 0, numbers )
     setlocal nomodified
     setlocal nomodifiable
+    0
     set scrollbind
 
     if DoCursor
         setlocal cursorline
     endif
-    0
 
     wincmd l
     set scrollbind
 
+    exec currentLine
+    
+    redraw!
     if DoCursor
 	setlocal cursorline
         autocmd CursorMoved <buffer>  call <SID>FollowCursorLine()
