@@ -176,7 +176,7 @@ function! <SID>QuiltAnnotate( bang, ... )
 	if empty(lines[i])
 	    break
 	endif
-	call add( numbers, substitute( lines[i], '^\([0-9]\+\).*$', '\1', 'g' ) )
+	call add( numbers, substitute(substitute( lines[i], '^\([0-9]\+\|\t\).*$', '\1', 'g' ), '\t', ' ', 'g' ) )
     endfor
     
     " now retreive patch names

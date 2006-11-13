@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.9.1)
+This file extensively describes the quilt plug-in usage (version 0.9.3)
 
 Using quilt						           *quilt-usage*
 
@@ -601,5 +601,9 @@ B. Changelog						       *quilt-changelog*
 	* Fixed QuiltAnnotate Interface when anotating a file not from the 0   
 	  line (the Followcursor was not working)                              
 >
+0.9.3 [2006/11/13]
+>
+	* Fixed QuiltAnnotate interface for files not completely from a patch  
+<
 -------------------------------------------------------------------------------
  vim:ft=help:norl:
