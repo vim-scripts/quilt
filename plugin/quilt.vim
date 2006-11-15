@@ -97,14 +97,31 @@ command! -nargs=? -complete=custom,QuiltCompleteInPatch
 command! -nargs=? -complete=file -bang
        \ QuiltAnnotate call <SID>QuiltAnnotate( "<bang>", <f-args> )
 
+" Provide defaults for variables
 
-let g:QuiltSubject = '[patch @num@/@total@] @name@'
-let g:QuiltMailSleep = 1
-let g:QuiltLang = 'en_us'
-let g:QuiltMailAddresses = [ 'test@localhost.com' ]
-let g:QuiltAnnotateFollowLine = 1
+if !exists( "g:QuiltSubject" )
+    let g:QuiltSubject = '[patch @num@/@total@] @name@'
+endif
 
+if !exists( "g:QuiltMailSleep" )
+    let g:QuiltMailSleep = 1
+endif
 
+if !exists( "g:QuiltLang" )
+    let g:QuiltLang = 'en_us'
+endif
+
+if !exists( "g:QuiltMailAddresses" )
+    let g:QuiltMailAddresses = [ 'test@localhost.com' ]
+endif
+
+if !exists( "g:QuiltAnnotateFollowLine" )
+    let g:QuiltAnnotateFollowLine = 1
+endif
+
+if !exists( "g:QuiltThunderbirdCmd" )
+    let g:QuiltThunderbirdCmd = "thunderbird"
+endif
 " Opens an interface with the quilt annotate informations :
 
 function! <SID>QuiltAnnotate( bang, ... )
@@ -527,7 +544,7 @@ function! <SID>ThunderBirdMail( dest, subject, body, ... )
     endif
 
 
-    let cmd = 'thunderbird -compose '
+    let cmd = g:QuiltThunderbirdCmd . ' -compose '
 
     let cmd = cmd . "'"
 

@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.9.3)
+This file extensively describes the quilt plug-in usage (version 0.9.4)
 
 Using quilt						           *quilt-usage*
 
@@ -344,6 +344,10 @@ naviguate in the email list.
 [patch1]/|patch2] are searched into the patch list, use <TAB> to navigate in
 the existing patch list.
 
+The command used to start thunderbird is taken from |g:QuiltThunderbirdCmd| by
+default it is set to "thunderbird" but you can change it (for instance on
+debian, it should be set to "icedove")
+
 -------------------------------------------------------------------------------
 							  *g:QuiltMailAddresses*
 
@@ -370,6 +374,22 @@ compose window using thunderbird. Default is 1
 	let g:QuiltMailSleep = 2
 <
 sets it to two seconds ...
+
+-------------------------------------------------------------------------------
+						         *g:QuiltThunderbirdCmd*
+|g:QuiltThunderbirdCmd|
+
+This variable contains the command line used to start thunderbird, it is
+"thunderbird" by default. On some system, (debian etch and sid) thunderbird is
+renamed to "icedove" so you should set it in your .vimrc :
+
+>
+	let g:QuiltThunderbirdCmd = "icedove"
+<
+
+The command used to start thunderbird is taken from |g:QuiltThunderbirdCmd| by
+default it is set to "thunderbird" but you can change it (for instance on
+debian, it should be set to "icedove")
 
 -------------------------------------------------------------------------------
 								   *g:QuiltLang*
@@ -604,6 +624,12 @@ B. Changelog						       *quilt-changelog*
 0.9.3 [2006/11/13]
 >
 	* Fixed QuiltAnnotate interface for files not completely from a patch  
+<
+0.9.4 [20006/11/14]
+>
+	* Fixed g:Quilt* variables that were reseted every :source quilt.vim   
+	* Added ta customization command for calling thunderbird (debian...    
+	  QuiltThunderbirdCmd should be set to "icedove" not "thunderbird"     
 <
 -------------------------------------------------------------------------------
  vim:ft=help:norl:
