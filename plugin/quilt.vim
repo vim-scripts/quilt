@@ -1203,6 +1203,13 @@ function! <SID>QuiltStatus()
 
     call <SID>QuiltCurrent()
 
+    " Files in the patches/ directory shouldn't be managed as part
+    " of the patch
+
+    if 0 == stridx(<SID>GetStrippedPath( expand( "%" ) ), "patches/")
+    	return 0
+    endif
+
     " Set the status line :
 
     if <SID>ListAllFiles() =~ <SID>GetStrippedPath( expand( "%" ) )

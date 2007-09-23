@@ -2,7 +2,7 @@
 
 		  VIM REFERENCE MANUAL (Quilt Plugin)	 by Florian Delizy
 
-This file extensively describes the quilt plug-in usage (version 0.9.5)
+This file extensively describes the quilt plug-in usage (version 0.9.6)
 
 Using quilt						           *quilt-usage*
 
@@ -638,5 +638,10 @@ B. Changelog						       *quilt-changelog*
         * Set readonly for files not in current patch                          
         * strip file names so that absolute names get correctly handled        
 <
+0.9.6 [2007/09/24]
+>
+        * Fixed files handling in patches/ directory (thanks to Jordan Crouse) 
+<
+
 -------------------------------------------------------------------------------
  vim:ft=help:norl:
