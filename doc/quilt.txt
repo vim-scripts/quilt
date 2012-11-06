@@ -641,6 +641,11 @@ B. Changelog						       *quilt-changelog*
 0.9.6 [2007/09/24]
 >
         * Fixed files handling in patches/ directory (thanks to Jordan Crouse) 
+
+<
+0.9.7 [2012/11/05]
+>
+        * Fixed viminfo '" filemark issue (thanks to Petr Uzel)
 <
 
 -------------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 "------------------------------------------------------------------------------
 " This plugin enables easy integration with quilt, to push/pop/refresh patch   
 "                                                                              
-" Author:     Florian Delizy <florian.delizy@unfreeze.net>                     
-" Maintainer: Florian Delizy <florian.delizy@unfreeze.net>                     
+" Author:     Florian Delizy <florian.delizy@gmail.com>                     
+" Maintainer: Florian Delizy <florian.delizy@gmail.com>                     
 "                                                                              
 " Install:                                                                     
 " uncompress in your .vim/ directory, then :helptag ~/.vim/doc to get the help 
@@ -20,7 +20,8 @@
 "------------------------------------------------------------------------------
 "                                                                              
 " TODO:                                                                        
-"                                                                              
+" ( if you see anything you'd like to be done, or need something else, mail/patch me :) 
+"
 " * an interface showing the current patch on the bottom                       
 "   - allow fold/unfold to see what files are included                         
 " * auto add the currently modified file                                       
@@ -31,6 +32,10 @@
 " * quilt merge, import ... and stuffs (is somebody using it ??)               
 
 
+if exists("g:skip_loading_quiltplugin") && g:skip_loading_quiltplugin
+    finish
+endif
+
 "------------------------------------------------------------------------------
 " Commands definition                                                          
 "------------------------------------------------------------------------------
@@ -39,11 +44,13 @@ let cpocopy=&cpo | set cpo-=C
 command! QuiltCheckRej call <SID>QuiltCheckRej()
 command! QuiltStatus call <SID>QuiltStatus()
 
-autocmd! BufNewFile,BufReadPost,FileReadPost * QuiltStatus
-autocmd! BufReadPost,FileReadPost * QuiltCheckRej
+augroup QuiltPlug
+autocmd!
 
-autocmd BufNewFile,BufReadPost * QuiltStatus
-autocmd BufReadPost * QuiltCheckRej
+autocmd BufNewFile,BufReadPost,FileReadPost * QuiltStatus
+autocmd BufReadPost,FileReadPost * QuiltCheckRej
+
+augroup END
 
 command! -nargs=? -complete=custom,QuiltCompleteInPatch
        \ QuiltPatchEdit call <SID>QuiltPatchEdit( <f-args> )
@@ -172,7 +179,9 @@ function! <SID>QuiltAnnotate( bang, ... )
     wincmd l
     wincmd |
     wincmd h
+    augroup QuiltPlugAnnotate
     autocmd BufUnload <buffer> call <SID>QuitAnnotateJ()
+    augroup END
 
     " Create the patch name window
     new
@@ -180,7 +189,9 @@ function! <SID>QuiltAnnotate( bang, ... )
     wincmd k
     wincmd _
     wincmd j
+    augroup QuiltPlugAnnotate
     autocmd BufUnload <buffer> call <SID>QuitAnnotateH()
+    augroup END
 
     " Parse the result
 
@@ -237,7 +248,9 @@ function! <SID>QuiltAnnotate( bang, ... )
     redraw!
     if DoCursor
 	setlocal cursorline
+        augroup QuiltPlugAnnotate
         autocmd CursorMoved <buffer>  call <SID>FollowCursorLine()
+        augroup END
     endif
 
 endfunction
@@ -265,14 +278,18 @@ function! <SID>QuitAnnotateJ()
     quit
     wincmd k
     wincmd l
-    autocmd! CursorMoved <buffer> 
+    augroup QuiltPlugAnnotate
+    autocmd!
+    augroup END
     setlocal nocursorline
 
 function! <SID>QuitAnnotateH()
     wincmd k
     quit
     wincmd l
-    autocmd! CursorMoved <buffer> 
+    augroup QuiltPlugAnnotate
+    autocmd!
+    augroup END
     setlocal nocursorline
 
 endfunction
